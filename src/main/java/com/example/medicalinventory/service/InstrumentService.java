@@ -1,0 +1,111 @@
+package com.example.medicalinventory.service;
+
+import com.example.medicalinventory.DTO.InstrumentRequest;
+import com.example.medicalinventory.model.Instrument;
+import com.example.medicalinventory.model.InstrumentStatus;
+import com.example.medicalinventory.repository.InstrumentRepository;
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.WriterException;
+import com.google.zxing.client.j2se.MatrixToImageWriter;
+import com.google.zxing.common.BitMatrix;
+import com.google.zxing.oned.Code39Writer;
+import com.itextpdf.io.font.PdfEncodings;
+import com.itextpdf.io.image.ImageData;
+import com.itextpdf.io.image.ImageDataFactory;
+import com.itextpdf.kernel.font.PdfFont;
+import com.itextpdf.kernel.font.PdfFontFactory;
+import com.itextpdf.kernel.pdf.PdfDocument;
+import com.itextpdf.kernel.pdf.PdfWriter;
+import com.itextpdf.layout.Document;
+import com.itextpdf.layout.element.Image;
+import com.itextpdf.layout.element.Paragraph;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import javax.imageio.ImageIO;
+
+@Service
+@RequiredArgsConstructor
+public class InstrumentService {
+
+    private final InstrumentRepository instrumentRepository;
+
+    @Transactional
+    public byte[] createInstrumentsAndGeneratePdf(InstrumentRequest request) throws Exception {
+        List<Instrument> allInstruments = new ArrayList<>();
+
+        for (int i = 0; i < request.getQuantity(); i++) {
+            Instrument instrument = Instrument.builder()
+                    .name(request.getName())
+                    .barcode(generateBarcode())
+                    .serialNumber(generateSerialNumber())
+                    .productionDate(request.getProductionDate())
+                    .acceptanceDate(request.getAcceptanceDate())
+                    .productionCompany(request.getProductionCompany())
+                    .country(request.getCountry())
+                    .composition(request.getComposition())
+                    .reusable(request.getReusable())
+                    .usageCount(request.getUsageCount() != null ? request.getUsageCount() : 0)
+                    .status(InstrumentStatus.ACTIVE)
+                    .build();
+
+            Instrument savedInstrument = instrumentRepository.save(instrument);
+            allInstruments.add(savedInstrument);
+        }
+
+        return generatePdfWithBarcodes(allInstruments);
+    }
+
+    private String generateBarcode() {
+        return "INSTR-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+    }
+
+    private String generateSerialNumber() {
+        return "SN-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+    }
+
+    private byte[] generatePdfWithBarcodes(List<Instrument> instruments) throws Exception {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        PdfDocument pdf = new PdfDocument(new PdfWriter(baos));
+        Document document = new Document(pdf);
+
+
+
+
+        for (Instrument instrument : instruments) {
+            PdfFont font = PdfFontFactory.createFont("fonts/FreeSans.ttf", PdfEncodings.IDENTITY_H);
+            document.setFont(font);
+            document.add(new Paragraph("Инструмент: " + instrument.getName()));
+            document.add(new Paragraph("Serial: " + instrument.getSerialNumber()));
+            document.add(new Paragraph("Barcode: " + instrument.getBarcode()));
+
+            // штрих-код
+            Image barcodeImage = new Image(generateBarcodeImage(instrument.getBarcode()));
+            document.add(barcodeImage);
+
+            document.add(new Paragraph("\n"));
+        }
+
+        document.close();
+        return baos.toByteArray();
+    }
+
+    private ImageData generateBarcodeImage(String code) throws WriterException {
+        Code39Writer writer = new Code39Writer();
+        BitMatrix bitMatrix = writer.encode(code, BarcodeFormat.CODE_39, 200, 50);
+        try {
+            BufferedImage bufferedImage = MatrixToImageWriter.toBufferedImage(bitMatrix);
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ImageIO.write(bufferedImage, "png", baos);
+            return ImageDataFactory.create(baos.toByteArray());
+        } catch (Exception e) {
+            throw new RuntimeException("Ошибка при генерации изображения штрих-кода", e);
+        }
+    }
+}

@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="1" author="jeki">
+        <createTable tableName="instruments">
+            <column name="id" type="UUID" defaultValueComputed="gen_random_uuid()">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="barcode" type="VARCHAR(255)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="serial_number" type="VARCHAR(255)"/>
+            <column name="production_date" type="DATE"/>
+            <column name="acceptance_date" type="DATE"/>
+            <column name="production_company" type="VARCHAR(255)"/>
+            <column name="country" type="VARCHAR(255)"/>
+            <column name="composition" type="TEXT"/>
+            <column name="reusable" type="BOOLEAN"/>
+            <column name="usage_count" type="INT"/>
+            <column name="status" type="VARCHAR(50)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="2" author="jeki">
+        <createTable tableName="instrument_photos">
+            <column name="id" type="UUID" defaultValueComputed="gen_random_uuid()">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="instrument_id" type="UUID"/>
+            <column name="url" type="TEXT"/>
+        </createTable>
+        <addForeignKeyConstraint
+                baseTableName="instrument_photos"
+                baseColumnNames="instrument_id"
+                constraintName="fk_instrument_photos_instruments"
+                referencedTableName="instruments"
+                referencedColumnNames="id"
+                onDelete="CASCADE"/>
+    </changeSet>
+
+    <changeSet id="3" author="jeki">
+        <createTable tableName="boxes">
+            <column name="id" type="UUID" defaultValueComputed="gen_random_uuid()">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="barcode" type="VARCHAR(255)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="doctor_name" type="VARCHAR(255)"/>
+            <column name="status" type="VARCHAR(50)"/>
+            <column name="created_at" type="TIMESTAMP"/>
+            <column name="updated_at" type="TIMESTAMP"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="4" author="jeki">
+        <createTable tableName="box_instruments">
+            <column name="box_id" type="UUID"/>
+            <column name="instrument_id" type="UUID"/>
+        </createTable>
+
+        <addPrimaryKey tableName="box_instruments"
+                       columnNames="box_id, instrument_id"
+                       constraintName="pk_box_instruments"/>
+
+        <addForeignKeyConstraint
+                baseTableName="box_instruments"
+                baseColumnNames="box_id"
+                constraintName="fk_box_instruments_boxes"
+                referencedTableName="boxes"
+                referencedColumnNames="id"
+                onDelete="CASCADE"/>
+        <addForeignKeyConstraint
+                baseTableName="box_instruments"
+                baseColumnNames="instrument_id"
+                constraintName="fk_box_instruments_instruments"
+                referencedTableName="instruments"
+                referencedColumnNames="id"
+                onDelete="CASCADE"/>
+    </changeSet>
+
+
+    <changeSet id="5" author="jeki">
+        <createTable tableName="instrument_box_history">
+            <column name="id" type="UUID" defaultValueComputed="gen_random_uuid()">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="box_id" type="UUID"/>
+            <column name="instrument_id" type="UUID"/>
+            <column name="operation" type="VARCHAR(50)"/>
+            <column name="timestamp" type="TIMESTAMP"/>
+        </createTable>
+        <addForeignKeyConstraint
+                baseTableName="instrument_box_history"
+                baseColumnNames="box_id"
+                constraintName="fk_history_boxes"
+                referencedTableName="boxes"
+                referencedColumnNames="id"
+                onDelete="CASCADE"/>
+        <addForeignKeyConstraint
+                baseTableName="instrument_box_history"
+                baseColumnNames="instrument_id"
+                constraintName="fk_history_instruments"
+                referencedTableName="instruments"
+                referencedColumnNames="id"
+                onDelete="CASCADE"/>
+    </changeSet>
+
+    <changeSet id="2025-08-18-01-add-name" author="jeki">
+
+        <!-- Проверяем, есть ли колонка name -->
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="instruments" columnName="name"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="instruments">
+            <column name="name" type="varchar(255)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="2025-08-18-01-add-production_date" author="jeki">
+    <!-- Проверяем, есть ли колонка production_date -->
+    <preConditions onFail="MARK_RAN">
+        <not>
+            <columnExists tableName="instruments" columnName="production_date"/>
+        </not>
+    </preConditions>
+    <addColumn tableName="instruments">
+        <column name="production_date" type="date">
+            <constraints nullable="true"/>
+        </column>
+    </addColumn>
+    </changeSet>
+
+</databaseChangeLog>
