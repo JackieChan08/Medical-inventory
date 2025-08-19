@@ -1,8 +1,11 @@
 package com.example.medicalinventory.service;
 
 import com.example.medicalinventory.DTO.InstrumentRequest;
+import com.example.medicalinventory.model.FileEntity;
 import com.example.medicalinventory.model.Instrument;
+import com.example.medicalinventory.model.InstrumentImage;
 import com.example.medicalinventory.model.InstrumentStatus;
+import com.example.medicalinventory.repository.InstrumentImageRepository;
 import com.example.medicalinventory.repository.InstrumentRepository;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.WriterException;
@@ -22,6 +25,7 @@ import com.itextpdf.layout.element.Paragraph;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
@@ -29,12 +33,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import javax.imageio.ImageIO;
-
 @Service
 @RequiredArgsConstructor
 public class InstrumentService {
 
     private final InstrumentRepository instrumentRepository;
+    private final InstrumentImageRepository instrumentImageRepository; // добавь
+    private final FileUploadService fileUploadService; // добавь
 
     @Transactional
     public byte[] createInstrumentsAndGeneratePdf(InstrumentRequest request) throws Exception {
@@ -56,6 +61,19 @@ public class InstrumentService {
                     .build();
 
             Instrument savedInstrument = instrumentRepository.save(instrument);
+
+            // сохраняем фото (если есть)
+            if (request.getImages() != null && !request.getImages().isEmpty()) {
+                for (MultipartFile image : request.getImages()) {
+                    FileEntity fileEntity = fileUploadService.saveImage(image);
+                    InstrumentImage instrumentImage = InstrumentImage.builder()
+                            .instrument(savedInstrument)
+                            .image(fileEntity)
+                            .build();
+                    instrumentImageRepository.save(instrumentImage);
+                }
+            }
+
             allInstruments.add(savedInstrument);
         }
 
@@ -74,9 +92,6 @@ public class InstrumentService {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         PdfDocument pdf = new PdfDocument(new PdfWriter(baos));
         Document document = new Document(pdf);
-
-
-
 
         for (Instrument instrument : instruments) {
             PdfFont font = PdfFontFactory.createFont("fonts/FreeSans.ttf", PdfEncodings.IDENTITY_H);
@@ -107,5 +122,9 @@ public class InstrumentService {
         } catch (Exception e) {
             throw new RuntimeException("Ошибка при генерации изображения штрих-кода", e);
         }
+    }
+
+    public Instrument getById(UUID id) {
+        return instrumentRepository.findById(id).orElse(null);
     }
 }

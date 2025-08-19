@@ -21,6 +21,7 @@ public class InstrumentRequest {
 
     private Integer quantity; // количество инструментов для создания за один запрос
 
-    private List<MultipartFile> photos;
+    private List<MultipartFile> images;
+
 }
 

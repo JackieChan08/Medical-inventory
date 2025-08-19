@@ -1,5 +1,6 @@
 package com.example.medicalinventory.model;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -43,5 +44,7 @@ public class Instrument {
     private InstrumentStatus status;
 
     @OneToMany(mappedBy = "instrument", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<InstrumentPhoto> photos;
+    @JsonManagedReference("instrument-images")
+    private List<InstrumentImage> instrumentImages;
+
 }
