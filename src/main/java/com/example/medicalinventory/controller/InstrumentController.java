@@ -6,6 +6,9 @@ import com.example.medicalinventory.model.Instrument;
 import com.example.medicalinventory.service.InstrumentConverterService;
 import com.example.medicalinventory.service.InstrumentService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -41,8 +44,26 @@ public class InstrumentController {
 
         return ResponseEntity.ok(instrumentResponse);
     }
+    @GetMapping("/search/{query}")
+    public ResponseEntity<Page<InstrumentResponse>> getInstrumentResponse(@PathVariable String query,
+                                                                    @RequestParam(defaultValue = "0") int page,
+                                                                    @RequestParam(defaultValue = "10") int size) throws Exception {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Instrument> instruments = instrumentService.search(query, pageable);
+
+        Page<InstrumentResponse> responses = instruments.map(converterService::convertToInstrumentResponse);
+        return ResponseEntity.ok(responses);
+    }
 
 
+    @PostMapping("/{instrumentId}/assign-doctor")
+    public ResponseEntity<Instrument> assignInstrumentToDoctor(
+            @PathVariable UUID instrumentId,
+            @RequestParam String doctorName
+    ) {
+        Instrument assignedInstrument = instrumentService.assignInstrumentToDoctor(instrumentId, doctorName);
+        return ResponseEntity.ok(assignedInstrument);
+    }
 
 }
 

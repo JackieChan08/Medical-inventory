@@ -29,5 +29,7 @@ public class InstrumentBoxHistory {
     private HistoryOperation operation;
 
     private LocalDateTime timestamp;
+
+    private String doctorName;
 }
 

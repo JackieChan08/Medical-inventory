@@ -44,7 +44,7 @@ public class Instrument {
     private InstrumentStatus status;
 
     @OneToMany(mappedBy = "instrument", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonManagedReference("instrument-images")
+    @JsonManagedReference("instrument_images")
     private List<InstrumentImage> instrumentImages;
 
 }

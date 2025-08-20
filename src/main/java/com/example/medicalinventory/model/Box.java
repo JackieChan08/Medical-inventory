@@ -1,7 +1,10 @@
 package com.example.medicalinventory.model;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -18,6 +21,8 @@ public class Box {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    private String name;
+
     @Column(unique = true, nullable = false)
     private String barcode;
 
@@ -29,6 +34,10 @@ public class Box {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    @Column
+    private LocalDate returnBy;
+
+
     @ManyToMany
     @JoinTable(
             name = "box_instruments",
@@ -36,5 +45,10 @@ public class Box {
             inverseJoinColumns = @JoinColumn(name = "instrument_id")
     )
     private List<Instrument> instruments;
+
+    @OneToMany(mappedBy = "box", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference("box_images")
+    private List<BoxImage> boxImages;
+
 }
 

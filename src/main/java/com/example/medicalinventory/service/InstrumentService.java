@@ -1,10 +1,8 @@
 package com.example.medicalinventory.service;
 
 import com.example.medicalinventory.DTO.InstrumentRequest;
-import com.example.medicalinventory.model.FileEntity;
-import com.example.medicalinventory.model.Instrument;
-import com.example.medicalinventory.model.InstrumentImage;
-import com.example.medicalinventory.model.InstrumentStatus;
+import com.example.medicalinventory.model.*;
+import com.example.medicalinventory.repository.InstrumentBoxHistoryRepository;
 import com.example.medicalinventory.repository.InstrumentImageRepository;
 import com.example.medicalinventory.repository.InstrumentRepository;
 import com.google.zxing.BarcodeFormat;
@@ -23,6 +21,8 @@ import com.itextpdf.layout.Document;
 import com.itextpdf.layout.element.Image;
 import com.itextpdf.layout.element.Paragraph;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -31,6 +31,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import javax.imageio.ImageIO;
 @Service
@@ -40,6 +41,7 @@ public class InstrumentService {
     private final InstrumentRepository instrumentRepository;
     private final InstrumentImageRepository instrumentImageRepository; // добавь
     private final FileUploadService fileUploadService; // добавь
+    private final InstrumentBoxHistoryRepository historyRepository;
 
     @Transactional
     public byte[] createInstrumentsAndGeneratePdf(InstrumentRequest request) throws Exception {
@@ -127,4 +129,31 @@ public class InstrumentService {
     public Instrument getById(UUID id) {
         return instrumentRepository.findById(id).orElse(null);
     }
+    public Page<Instrument> search(String value, Pageable pageable) {
+        return instrumentRepository.search(value, pageable);
+    }
+
+
+    @Transactional
+    public Instrument assignInstrumentToDoctor(UUID instrumentId, String doctorName) {
+        Instrument instrument = instrumentRepository.findById(instrumentId)
+                .orElseThrow(() -> new RuntimeException("Instrument not found: " + instrumentId));
+
+        instrument.setStatus(InstrumentStatus.BROKEN);
+
+        instrumentRepository.save(instrument);
+
+        InstrumentBoxHistory history = InstrumentBoxHistory.builder()
+                .instrument(instrument)
+                .box(null) // нет бокса
+                .doctorName(doctorName)
+                .operation(HistoryOperation.ADDED)
+                .timestamp(java.time.LocalDateTime.now())
+                .build();
+
+        historyRepository.save(history);
+
+        return instrument;
+    }
+
 }
