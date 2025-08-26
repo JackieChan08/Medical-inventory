@@ -9,12 +9,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.UUID;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/instruments")
@@ -24,46 +24,51 @@ public class InstrumentController {
     private final InstrumentService instrumentService;
     private final InstrumentConverterService converterService;
 
+    @PostMapping(value = "/batch", produces = "application/zip")
+    public ResponseEntity<byte[]> createAndDownloadBarcodesZip(@ModelAttribute InstrumentRequest request) throws Exception {
+        byte[] zip = instrumentService.createInstrumentsAndGenerateZipSvgs(request);
+
+        String filename = "barcodes_" + java.time.LocalDate.now() + ".zip";
+
+        return ResponseEntity.ok()
+                .header("Content-Type", "application/zip")
+                .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
+                .body(zip);
+    }
 
     @PostMapping(value = "/create", consumes = "multipart/form-data")
     public ResponseEntity<byte[]> createInstrument(@ModelAttribute InstrumentRequest request) throws Exception {
-        byte[] pdfBytes = instrumentService.createInstrumentsAndGeneratePdf(request); // метод без фото
+        byte[] zipBytes = instrumentService.createInstrumentsAndGenerateZipSvgs(request);
+
         return ResponseEntity.ok()
-                .header("Content-Disposition", "attachment; filename=instruments.pdf")
-                .contentType(MediaType.APPLICATION_PDF)
-                .body(pdfBytes);
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=instruments.zip")
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .body(zipBytes);
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<InstrumentResponse> getInstrumentResponse(@PathVariable UUID id) throws Exception {
-        Instrument instrument = instrumentService.getById(id);
+
+    @GetMapping("/{barcode}")
+    public ResponseEntity<InstrumentResponse> getInstrumentResponseByBarcode(@PathVariable String barcode) {
+        Instrument instrument = instrumentService.getByBarcode(barcode);
         if (instrument == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            return ResponseEntity.notFound().build();
         }
-        InstrumentResponse instrumentResponse = converterService.convertToInstrumentResponse(instrument);
-
-        return ResponseEntity.ok(instrumentResponse);
+        return ResponseEntity.ok(converterService.convertToInstrumentResponse(instrument));
     }
-    @GetMapping("/search/{query}")
-    public ResponseEntity<Page<InstrumentResponse>> getInstrumentResponse(@PathVariable String query,
-                                                                    @RequestParam(defaultValue = "0") int page,
-                                                                    @RequestParam(defaultValue = "10") int size) throws Exception {
+
+
+    @PostMapping("/return")
+    public ResponseEntity<String> returnInstruments(@RequestParam List<String> instrumentBarcodes) {
+        instrumentService.returnInstruments(instrumentBarcodes);
+        return ResponseEntity.ok("Instruments processed as returned/lost");
+    }
+
+
+    @GetMapping
+    public ResponseEntity<Page<InstrumentResponse>> getAllInstruments(@RequestParam int page,
+                                                                      @RequestParam int size) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<Instrument> instruments = instrumentService.search(query, pageable);
-
-        Page<InstrumentResponse> responses = instruments.map(converterService::convertToInstrumentResponse);
-        return ResponseEntity.ok(responses);
+        Page<Instrument> instruments = instrumentService.findAll(pageable);
+        return ResponseEntity.ok(instruments.map(converterService::convertToInstrumentResponse));
     }
-
-
-    @PostMapping("/{instrumentId}/assign-doctor")
-    public ResponseEntity<Instrument> assignInstrumentToDoctor(
-            @PathVariable UUID instrumentId,
-            @RequestParam String doctorName
-    ) {
-        Instrument assignedInstrument = instrumentService.assignInstrumentToDoctor(instrumentId, doctorName);
-        return ResponseEntity.ok(assignedInstrument);
-    }
-
 }
-

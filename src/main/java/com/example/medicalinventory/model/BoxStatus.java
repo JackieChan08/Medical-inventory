@@ -1,7 +1,8 @@
 package com.example.medicalinventory.model;
 
 public enum BoxStatus {
-    ISSUED,
-    RETURNED,
-    CERTIFIED
+    CREATED, // СОЗДАНО
+    ISSUED, // ВЫДАН
+    RETURNED // ВОЗВРАЩЕН
+
 }

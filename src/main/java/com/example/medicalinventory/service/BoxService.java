@@ -1,6 +1,7 @@
 package com.example.medicalinventory.service;
 
 import com.example.medicalinventory.DTO.BoxRequest;
+import com.example.medicalinventory.DTO.ReturnRequest;
 import com.example.medicalinventory.model.*;
 import com.example.medicalinventory.repository.BoxImageRepository;
 import com.example.medicalinventory.repository.BoxRepository;
@@ -21,16 +22,16 @@ import com.itextpdf.layout.Document;
 import com.itextpdf.layout.element.Image;
 import com.itextpdf.layout.element.Paragraph;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -42,13 +43,12 @@ public class BoxService {
     private final FileUploadService fileUploadService;
     private final InstrumentRepository instrumentRepository;
     private final InstrumentBoxHistoryService instrumentBoxHistoryService;
-
     @Transactional
     public byte[] createBoxAndGeneratePdf(BoxRequest request) throws Exception {
         Box box = Box.builder()
                 .barcode(generateBarcode())
-                .status(BoxStatus.CERTIFIED)
-                .boxImages(new ArrayList<>())
+                .doctorName(request.getDoctorName())
+                .status(BoxStatus.CREATED)
                 .instruments(new ArrayList<>())
                 .createdAt(LocalDateTime.now())
                 .returnBy(request.getReturnDate())
@@ -56,21 +56,24 @@ public class BoxService {
 
         Box savedBox = boxRepository.save(box);
 
-        // сохраняем фото (если есть)
-        if (request.getImages() != null && !request.getImages().isEmpty()) {
-            for (MultipartFile file : request.getImages()) {
-                FileEntity fileEntity = fileUploadService.saveImage(file);
-                BoxImage boxImage = BoxImage.builder()
-                        .box(savedBox)
-                        .image(fileEntity)
-                        .build();
-                boxImageRepository.save(boxImage);
-                savedBox.getBoxImages().add(boxImage);
+        if (request.getInstrumentBarcodes() != null && !request.getInstrumentBarcodes().isEmpty()) {
+            for (String instrumentBarcode : request.getInstrumentBarcodes()) {
+                Instrument instrument = instrumentRepository.findByBarcode(instrumentBarcode)
+                        .orElseThrow(() -> new RuntimeException("Instrument not found: " + instrumentBarcode));
+
+                instrument.setStatus(InstrumentStatus.IN_BOX);
+                instrumentRepository.save(instrument);
+
+                savedBox.getInstruments().add(instrument);
+
+                instrumentBoxHistoryService.logOperation(savedBox, instrument, HistoryOperation.ISSUED);
             }
+            boxRepository.save(savedBox);
         }
 
         return generatePdfWithBarcode(savedBox);
     }
+
 
     private String generateBarcode() {
         return "BOX-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
@@ -113,10 +116,10 @@ public class BoxService {
 
     @Transactional
     public Box addInstrumentToBox(String boxBarcode, String instrumentBarcode) {
-        Box box = boxRepository.findByBarcode(boxBarcode);
+        Box box = boxRepository.findByBarcode(boxBarcode).orElseThrow(() -> new RuntimeException("Box not found"));
         if (box == null) throw new RuntimeException("Box not found: " + boxBarcode);
 
-        Instrument instrument = instrumentRepository.findByBarcode(instrumentBarcode);
+        Instrument instrument = instrumentRepository.findByBarcode(instrumentBarcode).orElseThrow(() -> new RuntimeException("Instrument not found"));
         if (instrument == null) throw new RuntimeException("Instrument not found: " + instrumentBarcode);
 
         instrument.setStatus(InstrumentStatus.IN_BOX);
@@ -124,7 +127,7 @@ public class BoxService {
 
         box.getInstruments().add(instrument);
         Box savedBox = boxRepository.save(box);
-
+        instrumentBoxHistoryService.logOperation(savedBox, instrument, HistoryOperation.ISSUED);
 
 
         return savedBox;
@@ -132,49 +135,43 @@ public class BoxService {
 
     @Transactional
     public Box updateBox(String boxBarcode, BoxRequest request, BoxStatus boxStatus) throws Exception {
-        Box box = boxRepository.findByBarcode(boxBarcode);
+        Box box = boxRepository.findByBarcode(boxBarcode).orElseThrow(() -> new RuntimeException("Box not found"));
         if (box == null) throw new RuntimeException("Box not found: " + boxBarcode);
 
         if (boxStatus != null) box.setStatus(boxStatus);
         box.setUpdatedAt(LocalDateTime.now());
 
-        if (box.getBoxImages() == null) box.setBoxImages(new ArrayList<>());
-
-        if (request.getImages() != null && !request.getImages().isEmpty()) {
-            boxImageRepository.deleteAll(box.getBoxImages());
-            box.getBoxImages().clear();
-
-            for (MultipartFile file : request.getImages()) {
-                FileEntity fileEntity = fileUploadService.saveImage(file);
-                BoxImage boxImage = BoxImage.builder()
-                        .box(box)
-                        .image(fileEntity)
-                        .build();
-                boxImageRepository.save(boxImage);
-                box.getBoxImages().add(boxImage);
-            }
-        }
 
         return boxRepository.save(box);
     }
 
+
+
     @Transactional
-    public Box assignDoctor(String boxBarcode, String doctorName) {
-        Box box = boxRepository.findByBarcode(boxBarcode);
-        if (box == null) throw new RuntimeException("Box not found: " + boxBarcode);
+    public void returnBox(ReturnRequest request) {
+        Box box = boxRepository.findByBarcode(request.getBoxBarcode())
+                .orElseThrow(() -> new RuntimeException("Box not found"));
 
-        box.setDoctorName(doctorName);
-        box.setUpdatedAt(LocalDateTime.now());
-        Box savedBox = boxRepository.save(box);
-
-        // записываем историю для всех инструментов в боксе, что доктор теперь ответственен
-        if (savedBox.getInstruments() != null) {
-            for (Instrument instrument : savedBox.getInstruments()) {
-                instrumentBoxHistoryService.logOperation(savedBox, instrument, HistoryOperation.ADDED, doctorName);
-            }
+        for (String instrumentBarcode : request.getInstrumentBarcodes()) {
+            instrumentRepository.findByBarcode(instrumentBarcode)
+                    .ifPresentOrElse(instrument -> {
+                        instrument.setStatus(InstrumentStatus.ACTIVE);
+                        instrumentRepository.save(instrument);
+                        instrumentBoxHistoryService.logOperation(box, instrument, HistoryOperation.RETURNED);
+                    }, () -> {
+                        // если инструмент не найден в системе
+                        instrumentBoxHistoryService.logOperation(box, null, HistoryOperation.LOST);
+                    });
         }
 
-        return savedBox;
+        box.setStatus(BoxStatus.RETURNED);
+        boxRepository.save(box);
+        instrumentBoxHistoryService.logOperation(box, null, HistoryOperation.RETURNED);
     }
+    @Transactional
+    public Page<Box> getBoxesByStatus(BoxStatus status, Pageable pageable) {
+        return boxRepository.findBoxByStatus(status, pageable);
+    }
+
 
 }

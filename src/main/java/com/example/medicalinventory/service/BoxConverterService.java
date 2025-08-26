@@ -33,14 +33,6 @@ public class BoxConverterService {
         response.setName(box.getName());
         response.setReturnDate(box.getReturnBy());
 
-        // картинки
-        if (box.getBoxImages() != null && !box.getBoxImages().isEmpty()) {
-            List<FileResponse> images = box.getBoxImages().stream()
-                    .map(BoxImage::getImage)
-                    .map(this::mapToFileResponse)
-                    .toList();
-            response.setImages(images);
-        }
 
         // инструменты
         if (box.getInstruments() != null && !box.getInstruments().isEmpty()) {

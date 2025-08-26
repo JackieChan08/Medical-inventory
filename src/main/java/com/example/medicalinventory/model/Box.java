@@ -46,9 +46,6 @@ public class Box {
     )
     private List<Instrument> instruments;
 
-    @OneToMany(mappedBy = "box", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonManagedReference("box_images")
-    private List<BoxImage> boxImages;
 
 }
 

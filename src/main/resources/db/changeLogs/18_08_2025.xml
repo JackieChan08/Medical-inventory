@@ -137,27 +137,4 @@
                                  referencedTableName="files" referencedColumnNames="id"/>
     </changeSet>
 
-    <changeSet id="7-create-box-images" author="jeki">
-        <createTable tableName="box_images">
-            <column name="id" type="UUID">
-                <constraints primaryKey="true" nullable="false"/>
-            </column>
-            <column name="box_id" type="UUID">
-                <constraints nullable="false"/>
-            </column>
-            <column name="image_id" type="UUID">
-                <constraints nullable="false"/>
-            </column>
-        </createTable>
-
-        <addForeignKeyConstraint baseTableName="box_images" baseColumnNames="box_id"
-                                 constraintName="fk_box_images_box"
-                                 referencedTableName="boxes" referencedColumnNames="id"/>
-
-        <addForeignKeyConstraint baseTableName="box_images" baseColumnNames="image_id"
-                                 constraintName="fk_box_images_file"
-                                 referencedTableName="files" referencedColumnNames="id"/>
-    </changeSet>
-
-
 </databaseChangeLog>

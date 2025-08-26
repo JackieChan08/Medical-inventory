@@ -21,7 +21,7 @@ public interface InstrumentRepository extends JpaRepository<Instrument, UUID> {
             "OR i.barcode LIKE %:value%")
     Page<Instrument> search(@Param("value") String value, Pageable pageable);
 
-    Instrument findByBarcode(String barcode);
+    Optional<Instrument> findByBarcode(String barcode);
 
 
 }

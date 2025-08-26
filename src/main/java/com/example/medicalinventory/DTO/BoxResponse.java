@@ -18,6 +18,5 @@ public class BoxResponse {
     private LocalDateTime updatedAt;
     private LocalDate returnDate;
 
-    private List<FileResponse> images;
     private List<InstrumentResponse> instruments;
 }
