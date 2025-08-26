@@ -10,6 +10,7 @@ import com.google.zxing.BarcodeFormat;
 import com.google.zxing.WriterException;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
+import com.google.zxing.oned.Code128Writer;
 import com.google.zxing.oned.Code39Writer;
 import com.itextpdf.io.font.PdfEncodings;
 import com.itextpdf.io.image.ImageData;
@@ -45,14 +46,14 @@ public class BoxService {
     private final InstrumentBoxHistoryService instrumentBoxHistoryService;
     @Transactional
     public byte[] createBoxAndGeneratePdf(BoxRequest request) throws Exception {
-        Box box = Box.builder()
-                .barcode(generateBarcode())
-                .doctorName(request.getDoctorName())
-                .status(BoxStatus.CREATED)
-                .instruments(new ArrayList<>())
-                .createdAt(LocalDateTime.now())
-                .returnBy(request.getReturnDate())
-                .build();
+        Box box = new Box();
+        box.setBarcode(generateBarcode());
+        box.setName(request.getName());
+        box.setDoctorName(request.getDoctorName());
+        box.setStatus(BoxStatus.CREATED);
+        box.setInstruments(new ArrayList<>());
+        box.setCreatedAt(LocalDateTime.now());
+        box.setReturnBy(request.getReturnDate());
 
         Box savedBox = boxRepository.save(box);
 
@@ -65,7 +66,6 @@ public class BoxService {
                 instrumentRepository.save(instrument);
 
                 savedBox.getInstruments().add(instrument);
-
                 instrumentBoxHistoryService.logOperation(savedBox, instrument, HistoryOperation.ISSUED);
             }
             boxRepository.save(savedBox);
@@ -74,26 +74,30 @@ public class BoxService {
         return generatePdfWithBarcode(savedBox);
     }
 
-
-    private String generateBarcode() {
-        return "BOX-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-    }
-
     private byte[] generatePdfWithBarcode(Box box) throws Exception {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        PdfDocument pdf = new PdfDocument(new PdfWriter(baos));
+        PdfWriter writer = new PdfWriter(baos);
+        PdfDocument pdf = new PdfDocument(writer);
         Document document = new Document(pdf);
 
-        PdfFont font = PdfFontFactory.createFont("fonts/FreeSans.ttf", PdfEncodings.IDENTITY_H);
+        // Шрифт с поддержкой кириллицы
+        String fontPath = "src/main/resources/fonts/FreeSans.ttf"; // положи шрифт сюда
+        PdfFont font = PdfFontFactory.createFont(fontPath, PdfEncodings.IDENTITY_H);
         document.setFont(font);
 
-        document.add(new Paragraph("Бокс: " + box.getBarcode()));
+        // Заголовки
+        document.add(new Paragraph("Бокс: " + box.getName()));
         if (box.getDoctorName() != null) {
             document.add(new Paragraph("Доктор: " + box.getDoctorName()));
         }
-        document.add(new Paragraph("Статус: " + box.getStatus()));
+        if (box.getCreatedAt() != null) {
+            document.add(new Paragraph("Создан: " + box.getCreatedAt().toLocalDate()));
+        }
+        if (box.getReturnBy() != null) {
+            document.add(new Paragraph("Вернуть до: " + box.getReturnBy()));
+        }
 
-        // штрих-код
+        // Штрих-код
         Image barcodeImage = new Image(generateBarcodeImage(box.getBarcode()));
         document.add(barcodeImage);
 
@@ -101,9 +105,12 @@ public class BoxService {
         return baos.toByteArray();
     }
 
+
     private ImageData generateBarcodeImage(String code) throws WriterException {
-        Code39Writer writer = new Code39Writer();
-        BitMatrix bitMatrix = writer.encode(code, BarcodeFormat.CODE_39, 200, 50);
+        // Используем Code128Writer для поддержки EAN-128
+        Code128Writer writer = new Code128Writer();
+        BitMatrix bitMatrix = writer.encode(code, BarcodeFormat.CODE_128, 300, 100);
+
         try {
             BufferedImage bufferedImage = MatrixToImageWriter.toBufferedImage(bitMatrix);
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -113,6 +120,18 @@ public class BoxService {
             throw new RuntimeException("Ошибка при генерации изображения штрих-кода", e);
         }
     }
+
+    // Генерация самого кода EAN-128C (6 символов, буквы и цифры)
+    private String generateBarcode() {
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 6; i++) {
+            int idx = (int) (Math.random() * chars.length());
+            sb.append(chars.charAt(idx));
+        }
+        return sb.toString();
+    }
+
 
     @Transactional
     public Box addInstrumentToBox(String boxBarcode, String instrumentBarcode) {

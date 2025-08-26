@@ -24,7 +24,7 @@ public class InstrumentController {
     private final InstrumentService instrumentService;
     private final InstrumentConverterService converterService;
 
-    @PostMapping(value = "/batch", produces = "application/zip")
+    @PostMapping(value = "/create", produces = "application/zip")
     public ResponseEntity<byte[]> createAndDownloadBarcodesZip(@ModelAttribute InstrumentRequest request) throws Exception {
         byte[] zip = instrumentService.createInstrumentsAndGenerateZipSvgs(request);
 
@@ -34,16 +34,6 @@ public class InstrumentController {
                 .header("Content-Type", "application/zip")
                 .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
                 .body(zip);
-    }
-
-    @PostMapping(value = "/create", consumes = "multipart/form-data")
-    public ResponseEntity<byte[]> createInstrument(@ModelAttribute InstrumentRequest request) throws Exception {
-        byte[] zipBytes = instrumentService.createInstrumentsAndGenerateZipSvgs(request);
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=instruments.zip")
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .body(zipBytes);
     }
 
 

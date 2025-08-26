@@ -31,7 +31,7 @@ public class BoxConverterService {
         response.setCreatedAt(box.getCreatedAt());
         response.setUpdatedAt(box.getUpdatedAt());
         response.setName(box.getName());
-        response.setReturnDate(box.getReturnBy());
+        response.setReturn_by(box.getReturnBy());
 
 
         // инструменты

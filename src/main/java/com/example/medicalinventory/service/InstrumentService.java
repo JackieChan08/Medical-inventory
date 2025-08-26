@@ -8,6 +8,7 @@ import com.example.medicalinventory.repository.InstrumentRepository;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.WriterException;
 import com.google.zxing.common.BitMatrix;
+import com.google.zxing.oned.Code128Writer;
 import com.google.zxing.oned.Code39Writer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -74,8 +75,16 @@ public class InstrumentService {
     }
 
     private String generateBarcode() {
-        return "INSTR-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        // генерируем случайную строку из 6 символов (буквы и цифры)
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        StringBuilder sb = new StringBuilder();
+        Random random = new Random();
+        for (int i = 0; i < 6; i++) {
+            sb.append(chars.charAt(random.nextInt(chars.length())));
+        }
+        return sb.toString();
     }
+
 
     private String generateSerialNumber() {
         return "SN-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
@@ -91,7 +100,7 @@ public class InstrumentService {
                 int height = 180;      // высота SVG
                 int margin = 10;       // отступы по краям
 
-                String svg = generateCode39Svg(barcode, width, height, margin);
+                String svg = generateCode128Svg(barcode, width, height, margin);
 
                 ZipEntry entry = new ZipEntry(barcode + ".svg");
                 zos.putNextEntry(entry);
@@ -103,9 +112,9 @@ public class InstrumentService {
     }
 
 
-    private String generateCode39Svg(String text, int width, int height, int margin) throws WriterException {
-        Code39Writer writer = new Code39Writer();
-        BitMatrix matrix = writer.encode(text, BarcodeFormat.CODE_39, width - margin * 2, height - margin * 2);
+    private String generateCode128Svg(String text, int width, int height, int margin) throws WriterException {
+        Code128Writer writer = new Code128Writer(); // используем Code128Writer
+        BitMatrix matrix = writer.encode(text, BarcodeFormat.CODE_128, width - margin * 2, height - margin * 2);
 
         int w = matrix.getWidth();
         int h = matrix.getHeight();
@@ -165,6 +174,7 @@ public class InstrumentService {
         sb.append("</svg>");
         return sb.toString();
     }
+
 
     private boolean columnHasBlack(BitMatrix m, int x, int h) {
         for (int y = 0; y < h; y++) {

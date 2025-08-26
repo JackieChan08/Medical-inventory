@@ -25,25 +25,16 @@ public class BoxController {
     private final BoxConverterService boxConverterService;
 
 
-    @PostMapping(value = "/create/pdf")
-    public ResponseEntity<ByteArrayResource> createBoxAndGetPdf(@ModelAttribute BoxRequest request) throws Exception {
+    @PostMapping("/create")
+    public ResponseEntity<byte[]> createBoxAndGetPdf(@RequestBody BoxRequest request) throws Exception {
         byte[] pdfBytes = boxService.createBoxAndGeneratePdf(request);
 
-        ByteArrayResource resource = new ByteArrayResource(pdfBytes);
         return ResponseEntity.ok()
+                .header("Content-Disposition", "attachment; filename=box_" + System.currentTimeMillis() + ".pdf")
                 .contentType(MediaType.APPLICATION_PDF)
-                .contentLength(pdfBytes.length)
-                .body(resource);
+                .body(pdfBytes);
     }
 
-    @PostMapping("/{boxBarcode}/add-instrument")
-    public ResponseEntity<Box> addInstrumentToBox(
-            @PathVariable String boxBarcode,
-            @RequestParam String instrumentBarcode
-    ) {
-        Box updatedBox = boxService.addInstrumentToBox(boxBarcode, instrumentBarcode);
-        return ResponseEntity.ok(updatedBox);
-    }
 
 
     @PostMapping("/return")

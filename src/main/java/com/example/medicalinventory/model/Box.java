@@ -34,8 +34,9 @@ public class Box {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    @Column
+    @Column(name = "return_by")
     private LocalDate returnBy;
+
 
 
     @ManyToMany
