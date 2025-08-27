@@ -13,6 +13,7 @@ import com.google.zxing.common.BitMatrix;
 import com.google.zxing.oned.Code128Writer;
 import com.google.zxing.oned.Code39Writer;
 import com.itextpdf.io.font.PdfEncodings;
+import com.itextpdf.io.font.constants.StandardFonts;
 import com.itextpdf.io.image.ImageData;
 import com.itextpdf.io.image.ImageDataFactory;
 import com.itextpdf.kernel.font.PdfFont;
@@ -81,8 +82,7 @@ public class BoxService {
         PdfDocument pdf = new PdfDocument(writer);
         Document document = new Document(pdf);
 
-        String fontPath = "src/main/resources/fonts/FreeSans.ttf";
-        PdfFont font = PdfFontFactory.createFont(fontPath, PdfEncodings.IDENTITY_H);
+        PdfFont font = PdfFontFactory.createFont(StandardFonts.HELVETICA);
         document.setFont(font);
 
         // Заголовки

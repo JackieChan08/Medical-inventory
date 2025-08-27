@@ -16,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/boxes")
@@ -26,17 +27,18 @@ public class BoxController {
     private final BoxConverterService boxConverterService;
 
 
-    @PostMapping(value = "/create",
-            consumes = MediaType.APPLICATION_JSON_VALUE,
+    @PostMapping(value = "/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE,
             produces = MediaType.APPLICATION_PDF_VALUE)
-    public ResponseEntity<byte[]> createBoxAndGetPdf(@RequestBody BoxRequest request) throws Exception {
+    public ResponseEntity<byte[]> createBoxAndGetPdf(@ModelAttribute BoxRequest request) throws Exception {
         byte[] pdfBytes = boxService.createBoxAndGeneratePdf(request);
 
         return ResponseEntity.ok()
-                .header("Content-Disposition", "attachment; filename=box_" + System.currentTimeMillis() + ".pdf")
+                .header("Content-Disposition", "attachment; filename=" + request.getName() + "_" + request.getReturnDate() + ".pdf")
                 .contentType(MediaType.APPLICATION_PDF)
                 .body(pdfBytes);
     }
+
+
 
 
     @PostMapping("/return")
