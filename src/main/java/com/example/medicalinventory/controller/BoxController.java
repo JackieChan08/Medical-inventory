@@ -8,7 +8,6 @@ import com.example.medicalinventory.model.BoxStatus;
 import com.example.medicalinventory.service.BoxConverterService;
 import com.example.medicalinventory.service.BoxService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.core.io.ByteArrayResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -27,8 +26,10 @@ public class BoxController {
     private final BoxConverterService boxConverterService;
 
 
-    @PostMapping(value = "/create", produces = "application/pdf")
-    public ResponseEntity<byte[]> createBoxAndGetPdf(@RequestBody BoxRequest request) throws Exception {
+    @PostMapping(value = "/create",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE,
+            produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> createBoxAndGetPdf(@ModelAttribute BoxRequest request) throws Exception {
         byte[] pdfBytes = boxService.createBoxAndGeneratePdf(request);
 
         return ResponseEntity.ok()

@@ -81,8 +81,7 @@ public class BoxService {
         PdfDocument pdf = new PdfDocument(writer);
         Document document = new Document(pdf);
 
-        // Шрифт с поддержкой кириллицы
-        String fontPath = "src/main/resources/fonts/FreeSans.ttf"; // положи шрифт сюда
+        String fontPath = "src/main/resources/fonts/FreeSans.ttf";
         PdfFont font = PdfFontFactory.createFont(fontPath, PdfEncodings.IDENTITY_H);
         document.setFont(font);
 
