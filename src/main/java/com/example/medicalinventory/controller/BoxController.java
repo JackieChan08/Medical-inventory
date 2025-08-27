@@ -27,9 +27,9 @@ public class BoxController {
 
 
     @PostMapping(value = "/create",
-            consumes = MediaType.MULTIPART_FORM_DATA_VALUE,
+            consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_PDF_VALUE)
-    public ResponseEntity<byte[]> createBoxAndGetPdf(@ModelAttribute BoxRequest request) throws Exception {
+    public ResponseEntity<byte[]> createBoxAndGetPdf(@RequestBody BoxRequest request) throws Exception {
         byte[] pdfBytes = boxService.createBoxAndGeneratePdf(request);
 
         return ResponseEntity.ok()
