@@ -16,6 +16,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+
 @RestController
 @RequestMapping("/api/boxes")
 @RequiredArgsConstructor
@@ -25,7 +27,7 @@ public class BoxController {
     private final BoxConverterService boxConverterService;
 
 
-    @PostMapping("/create")
+    @PostMapping(value = "/create", produces = "application/pdf")
     public ResponseEntity<byte[]> createBoxAndGetPdf(@RequestBody BoxRequest request) throws Exception {
         byte[] pdfBytes = boxService.createBoxAndGeneratePdf(request);
 
@@ -34,7 +36,6 @@ public class BoxController {
                 .contentType(MediaType.APPLICATION_PDF)
                 .body(pdfBytes);
     }
-
 
 
     @PostMapping("/return")
@@ -49,6 +50,20 @@ public class BoxController {
                                                             @RequestParam int size) {
         Pageable pageable = PageRequest.of(page, size);
         Page<Box> boxes = boxService.getBoxesByStatus(status, pageable);
+        return ResponseEntity.ok(boxes.map(boxConverterService::convertToBoxResponse));
+    }
+
+
+    @GetMapping("/by-return-date")
+    public ResponseEntity<Page<BoxResponse>> getBoxesByReturnDateRange(
+            @RequestParam LocalDate startDate,
+            @RequestParam LocalDate endDate,
+            @RequestParam int page,
+            @RequestParam int size) {
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Box> boxes = boxService.getBoxesByReturnDateRange(startDate, endDate, pageable);
+
         return ResponseEntity.ok(boxes.map(boxConverterService::convertToBoxResponse));
     }
 

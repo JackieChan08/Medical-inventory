@@ -23,5 +23,8 @@ public interface InstrumentRepository extends JpaRepository<Instrument, UUID> {
 
     Optional<Instrument> findByBarcode(String barcode);
 
+    Page<Instrument> findAllByStatus(InstrumentStatus status, Pageable pageable);
+
+
 
 }

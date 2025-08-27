@@ -31,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.UUID;
@@ -187,10 +188,14 @@ public class BoxService {
         boxRepository.save(box);
         instrumentBoxHistoryService.logOperation(box, null, HistoryOperation.RETURNED);
     }
-    @Transactional
+
     public Page<Box> getBoxesByStatus(BoxStatus status, Pageable pageable) {
-        return boxRepository.findBoxByStatus(status, pageable);
+        return boxRepository.findAllByStatus(status, pageable);
     }
+
+    public Page<Box> getBoxesByReturnDateRange(LocalDate startDate, LocalDate endDate, Pageable pageable){
+        return boxRepository.findByReturnByBetween(startDate, endDate, pageable);
+    };
 
 
 }

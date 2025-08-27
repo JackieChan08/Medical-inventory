@@ -113,7 +113,7 @@ public class InstrumentService {
 
 
     private String generateCode128Svg(String text, int width, int height, int margin) throws WriterException {
-        Code128Writer writer = new Code128Writer(); // используем Code128Writer
+        Code128Writer writer = new Code128Writer();
         BitMatrix matrix = writer.encode(text, BarcodeFormat.CODE_128, width - margin * 2, height - margin * 2);
 
         int w = matrix.getWidth();
@@ -163,17 +163,10 @@ public class InstrumentService {
             x = runEnd;
         }
 
-        int fontSize = 14;
-        sb.append("<text x=\"").append(width / 2)
-                .append("\" y=\"").append(height - Math.max(4, margin / 2))
-                .append("\" font-family=\"monospace\" font-size=\"").append(fontSize)
-                .append("\" text-anchor=\"middle\">")
-                .append(escapeXml(text))
-                .append("</text>\n");
-
         sb.append("</svg>");
         return sb.toString();
     }
+
 
 
     private boolean columnHasBlack(BitMatrix m, int x, int h) {
@@ -209,5 +202,8 @@ public class InstrumentService {
 
     public Page<Instrument> findAll(Pageable pageable) {
         return instrumentRepository.findAll(pageable);
+    }
+    public Page<Instrument> getInstrumentsByStatus(InstrumentStatus status, Pageable pageable) {
+        return instrumentRepository.findAllByStatus(status, pageable);
     }
 }
