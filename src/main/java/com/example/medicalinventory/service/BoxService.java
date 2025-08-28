@@ -1,6 +1,8 @@
 package com.example.medicalinventory.service;
 
 import com.example.medicalinventory.DTO.BoxRequest;
+import com.example.medicalinventory.DTO.BoxStatusRequest;
+import com.example.medicalinventory.DTO.ReturnCheckResponse;
 import com.example.medicalinventory.DTO.ReturnRequest;
 import com.example.medicalinventory.model.*;
 import com.example.medicalinventory.repository.BoxImageRepository;
@@ -35,6 +37,7 @@ import java.io.ByteArrayOutputStream;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -97,7 +100,6 @@ public class BoxService {
             document.add(new Paragraph("Вернуть до: " + box.getReturnBy()));
         }
 
-        // Штрих-код
         Image barcodeImage = new Image(generateBarcodeImage(box.getBarcode()));
         document.add(barcodeImage);
 
@@ -107,7 +109,6 @@ public class BoxService {
 
 
     private ImageData generateBarcodeImage(String code) throws WriterException {
-        // Используем Code128Writer для поддержки EAN-128
         Code128Writer writer = new Code128Writer();
         BitMatrix bitMatrix = writer.encode(code, BarcodeFormat.CODE_128, 300, 100);
 
@@ -120,8 +121,68 @@ public class BoxService {
             throw new RuntimeException("Ошибка при генерации изображения штрих-кода", e);
         }
     }
+    @Transactional
+    public Box updateBoxStatus(BoxStatusRequest boxStatusRequest) throws Exception {
+        Box box = boxRepository.findByBarcode(boxStatusRequest.getBarcode())
+                .orElseThrow(() -> new RuntimeException("Box not found"));
 
-    // Генерация самого кода EAN-128C (6 символов, буквы и цифры)
+        final BoxStatus newStatus = boxStatusRequest.getBoxStatus();
+
+        if (newStatus != BoxStatus.ISSUED) {
+            if (box.getStatus() == null || box.getStatus() == BoxStatus.CREATED) {
+                throw new IllegalStateException("Box cannot be updated from CREATED or null to " + newStatus);
+            }
+        }
+
+        box.setStatus(newStatus);
+        boxRepository.save(box);
+
+        if (boxStatusRequest.getInstrumentBarcodes() != null) {
+            for (String instrumentBarcode : boxStatusRequest.getInstrumentBarcodes()) {
+                instrumentRepository.findByBarcode(instrumentBarcode)
+                        .ifPresentOrElse(instrument -> {
+                            if (newStatus == BoxStatus.ISSUED) {
+                                instrument.setStatus(InstrumentStatus.IN_USE);
+                                instrumentRepository.save(instrument);
+                                instrumentBoxHistoryService.logOperation(
+                                        box,
+                                        instrument,
+                                        HistoryOperation.ISSUED,
+                                        box.getDoctorName()
+                                );
+                            } else if (newStatus == BoxStatus.RETURNED) {
+                                instrument.setStatus(InstrumentStatus.ACTIVE);
+                                instrumentRepository.save(instrument);
+                                instrumentBoxHistoryService.logOperation(
+                                        box,
+                                        instrument,
+                                        HistoryOperation.RETURNED,
+                                        box.getDoctorName()
+                                );
+                            }
+                        }, () -> {
+                            instrumentBoxHistoryService.logOperation(
+                                    box,
+                                    null,
+                                    HistoryOperation.LOST,
+                                    box.getDoctorName()
+                            );
+                        });
+            }
+        }
+
+        if (newStatus == BoxStatus.ISSUED) {
+            instrumentBoxHistoryService.logOperation(box, null, HistoryOperation.ISSUED);
+        } else if (newStatus == BoxStatus.RETURNED) {
+            instrumentBoxHistoryService.logOperation(box, null, HistoryOperation.RETURNED);
+        }
+
+        return box;
+    }
+
+
+
+
     private String generateBarcode() {
         String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
         StringBuilder sb = new StringBuilder();
@@ -162,6 +223,44 @@ public class BoxService {
 
 
         return boxRepository.save(box);
+    }
+    @Transactional(readOnly = true)
+    public ReturnCheckResponse checkReturnBox(ReturnRequest request) {
+        List<String> found = new ArrayList<>();
+        List<String> notFound = new ArrayList<>();
+
+        for (String instrumentBarcode : request.getInstrumentBarcodes()) {
+            boolean exists = instrumentRepository.findByBarcode(instrumentBarcode).isPresent();
+            if (exists) {
+                found.add(instrumentBarcode);
+            } else {
+                notFound.add(instrumentBarcode);
+            }
+        }
+
+        return new ReturnCheckResponse(found, notFound);
+    }
+
+
+    @Transactional
+    public void confirmReturnBox(ReturnRequest request) {
+        Box box = boxRepository.findByBarcode(request.getBoxBarcode())
+                .orElseThrow(() -> new RuntimeException("Box not found"));
+
+        for (String instrumentBarcode : request.getInstrumentBarcodes()) {
+            instrumentRepository.findByBarcode(instrumentBarcode)
+                    .ifPresentOrElse(instrument -> {
+                        instrument.setStatus(InstrumentStatus.ACTIVE);
+                        instrumentRepository.save(instrument);
+                        instrumentBoxHistoryService.logOperation(box, instrument, HistoryOperation.RETURNED);
+                    }, () -> {
+                        instrumentBoxHistoryService.logOperation(box, null, HistoryOperation.LOST);
+                    });
+        }
+
+        box.setStatus(BoxStatus.RETURNED);
+        boxRepository.save(box);
+        instrumentBoxHistoryService.logOperation(box, null, HistoryOperation.RETURNED);
     }
 
 

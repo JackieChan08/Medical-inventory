@@ -27,14 +27,14 @@ public class InstrumentController {
     public ResponseEntity<byte[]> createAndDownloadBarcodesZip(@ModelAttribute InstrumentRequest request) throws Exception {
         byte[] zip = instrumentService.createInstrumentsAndGenerateZipSvgs(request);
 
-        String safeName = request.getName().replaceAll("[^a-zA-Z0-9-_]", "_");
-        String filename = safeName + "_" + java.time.LocalDate.now() + ".zip";
+        String filename = request.getName() + "_" + java.time.LocalDate.now() + ".zip";
 
         return ResponseEntity.ok()
                 .header("Content-Type", "application/zip")
                 .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
                 .body(zip);
     }
+
 
 
 

@@ -1,8 +1,6 @@
 package com.example.medicalinventory.controller;
 
-import com.example.medicalinventory.DTO.BoxRequest;
-import com.example.medicalinventory.DTO.BoxResponse;
-import com.example.medicalinventory.DTO.ReturnRequest;
+import com.example.medicalinventory.DTO.*;
 import com.example.medicalinventory.model.Box;
 import com.example.medicalinventory.model.BoxStatus;
 import com.example.medicalinventory.service.BoxConverterService;
@@ -32,20 +30,31 @@ public class BoxController {
     public ResponseEntity<byte[]> createBoxAndGetPdf(@ModelAttribute BoxRequest request) throws Exception {
         byte[] pdfBytes = boxService.createBoxAndGeneratePdf(request);
 
+        String operationName = request.getName();
+        String doctorName = request.getDoctorName();
+        LocalDate createdDate = LocalDate.now();
+
+        String filename = operationName + "_" + doctorName + "_" + createdDate + ".pdf";
+
         return ResponseEntity.ok()
-                .header("Content-Disposition", "attachment; filename=" + request.getName() + "_" + request.getReturnDate() + ".pdf")
+                .header("Content-Disposition", "attachment; filename=" + filename)
                 .contentType(MediaType.APPLICATION_PDF)
                 .body(pdfBytes);
     }
 
-
-
-
-    @PostMapping("/return")
-    public ResponseEntity<String> returnBox(@RequestBody ReturnRequest request) {
-        boxService.returnBox(request);
-        return ResponseEntity.ok("Box and instruments processed as returned/lost");
+    @PostMapping("/update-status")
+    public ResponseEntity<Box> updateStatus(@RequestBody BoxStatusRequest request) throws Exception {
+        Box updatedBox = boxService.updateBoxStatus(request);
+        return ResponseEntity.ok(updatedBox);
     }
+
+
+    @PostMapping("/check")
+    public ResponseEntity<ReturnCheckResponse> checkReturn(@RequestBody ReturnRequest request) {
+        ReturnCheckResponse response = boxService.checkReturnBox(request);
+        return ResponseEntity.ok(response);
+    }
+
 
     @GetMapping("/get-by-status")
     public ResponseEntity<Page<BoxResponse>> getBoxByStatus(@RequestParam BoxStatus status,
