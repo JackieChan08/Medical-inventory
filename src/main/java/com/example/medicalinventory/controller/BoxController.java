@@ -30,17 +30,12 @@ public class BoxController {
     public ResponseEntity<byte[]> createBoxAndGetPdf(@ModelAttribute BoxRequest request) throws Exception {
         byte[] pdfBytes = boxService.createBoxAndGeneratePdf(request);
 
-        String operationName = request.getName();
-        String doctorName = request.getDoctorName();
-        LocalDate createdDate = LocalDate.now();
-
-        String filename = operationName + "_" + doctorName + "_" + createdDate + ".pdf";
-
         return ResponseEntity.ok()
-                .header("Content-Disposition", "attachment; filename=" + filename)
+                .header("Content-Disposition", "attachment; filename=" + request.getName() + "_" + LocalDate.now() + ".pdf")
                 .contentType(MediaType.APPLICATION_PDF)
                 .body(pdfBytes);
     }
+
 
     @PostMapping("/update-status")
     public ResponseEntity<Box> updateStatus(@RequestBody BoxStatusRequest request) throws Exception {

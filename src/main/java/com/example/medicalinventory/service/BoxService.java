@@ -13,9 +13,11 @@ import com.google.zxing.WriterException;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.oned.Code128Writer;
-import com.google.zxing.oned.Code39Writer;
-import com.itextpdf.io.font.PdfEncodings;
+import com.itextpdf.io.font.FontProgramFactory;
 import com.itextpdf.io.font.constants.StandardFonts;
+import com.itextpdf.io.font.PdfEncodings;
+import com.itextpdf.kernel.font.PdfFont;
+import com.itextpdf.kernel.font.PdfFontFactory;
 import com.itextpdf.io.image.ImageData;
 import com.itextpdf.io.image.ImageDataFactory;
 import com.itextpdf.kernel.font.PdfFont;
@@ -34,6 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -85,10 +88,14 @@ public class BoxService {
         PdfDocument pdf = new PdfDocument(writer);
         Document document = new Document(pdf);
 
-        PdfFont font = PdfFontFactory.createFont(StandardFonts.HELVETICA);
+        InputStream fontStream = getClass().getResourceAsStream("/fonts/FreeSans.ttf");
+        byte[] fontBytes = fontStream.readAllBytes();
+        PdfFont font = PdfFontFactory.createFont(
+                FontProgramFactory.createFont(fontBytes),
+                PdfEncodings.IDENTITY_H,
+                PdfFontFactory.EmbeddingStrategy.FORCE_EMBEDDED
+        );
         document.setFont(font);
-
-        // Заголовки
         document.add(new Paragraph("Бокс: " + box.getName()));
         if (box.getDoctorName() != null) {
             document.add(new Paragraph("Доктор: " + box.getDoctorName()));
@@ -106,6 +113,7 @@ public class BoxService {
         document.close();
         return baos.toByteArray();
     }
+
 
 
     private ImageData generateBarcodeImage(String code) throws WriterException {
