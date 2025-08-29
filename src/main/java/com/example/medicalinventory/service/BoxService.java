@@ -1,9 +1,6 @@
 package com.example.medicalinventory.service;
 
-import com.example.medicalinventory.DTO.BoxRequest;
-import com.example.medicalinventory.DTO.BoxStatusRequest;
-import com.example.medicalinventory.DTO.ReturnCheckResponse;
-import com.example.medicalinventory.DTO.ReturnRequest;
+import com.example.medicalinventory.DTO.*;
 import com.example.medicalinventory.model.*;
 import com.example.medicalinventory.repository.BoxImageRepository;
 import com.example.medicalinventory.repository.BoxRepository;
@@ -39,9 +36,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -52,6 +48,8 @@ public class BoxService {
     private final FileUploadService fileUploadService;
     private final InstrumentRepository instrumentRepository;
     private final InstrumentBoxHistoryService instrumentBoxHistoryService;
+    private final InstrumentConverterService instrumentConverterService;
+
     @Transactional
     public byte[] createBoxAndGeneratePdf(BoxRequest request) throws Exception {
         Box box = new Box();
@@ -70,6 +68,10 @@ public class BoxService {
                 Instrument instrument = instrumentRepository.findByBarcode(instrumentBarcode)
                         .orElseThrow(() -> new RuntimeException("Instrument not found: " + instrumentBarcode));
 
+                if (instrument.getStatus() == InstrumentStatus.EXPLOITATION) {
+                    throw new RuntimeException("Инструмент с баркодом " + instrumentBarcode + " уже имеет конечное количество использований!");
+                }
+
                 instrument.setStatus(InstrumentStatus.IN_BOX);
                 instrumentRepository.save(instrument);
 
@@ -81,6 +83,7 @@ public class BoxService {
 
         return generatePdfWithBarcode(savedBox);
     }
+
 
     private byte[] generatePdfWithBarcode(Box box) throws Exception {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -113,7 +116,6 @@ public class BoxService {
         document.close();
         return baos.toByteArray();
     }
-
 
 
     private ImageData generateBarcodeImage(String code) throws WriterException {
@@ -151,6 +153,7 @@ public class BoxService {
                         .ifPresentOrElse(instrument -> {
                             if (newStatus == BoxStatus.ISSUED) {
                                 instrument.setStatus(InstrumentStatus.IN_USE);
+                                instrument.setBox(box);
                                 instrumentRepository.save(instrument);
                                 instrumentBoxHistoryService.logOperation(
                                         box,
@@ -160,7 +163,12 @@ public class BoxService {
                                 );
                             } else if (newStatus == BoxStatus.RETURNED) {
                                 instrument.setStatus(InstrumentStatus.ACTIVE);
+                                instrument.setBox(null);
                                 instrumentRepository.save(instrument);
+                                if (instrument.getUsageCount() <= 0){
+                                    instrument.setStatus(InstrumentStatus.EXPLOITATION);
+                                }
+                                instrument.setUsageCount(instrument.getUsageCount() - 1);
                                 instrumentBoxHistoryService.logOperation(
                                         box,
                                         instrument,
@@ -187,8 +195,6 @@ public class BoxService {
 
         return box;
     }
-
-
 
 
     private String generateBarcode() {
@@ -222,17 +228,6 @@ public class BoxService {
     }
 
     @Transactional
-    public Box updateBox(String boxBarcode, BoxRequest request, BoxStatus boxStatus) throws Exception {
-        Box box = boxRepository.findByBarcode(boxBarcode).orElseThrow(() -> new RuntimeException("Box not found"));
-        if (box == null) throw new RuntimeException("Box not found: " + boxBarcode);
-
-        if (boxStatus != null) box.setStatus(boxStatus);
-        box.setUpdatedAt(LocalDateTime.now());
-
-
-        return boxRepository.save(box);
-    }
-    @Transactional(readOnly = true)
     public ReturnCheckResponse checkReturnBox(ReturnRequest request) {
         List<String> found = new ArrayList<>();
         List<String> notFound = new ArrayList<>();
@@ -285,7 +280,6 @@ public class BoxService {
                         instrumentRepository.save(instrument);
                         instrumentBoxHistoryService.logOperation(box, instrument, HistoryOperation.RETURNED);
                     }, () -> {
-                        // если инструмент не найден в системе
                         instrumentBoxHistoryService.logOperation(box, null, HistoryOperation.LOST);
                     });
         }

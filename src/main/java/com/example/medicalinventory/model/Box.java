@@ -39,12 +39,7 @@ public class Box {
 
 
 
-    @ManyToMany
-    @JoinTable(
-            name = "box_instruments",
-            joinColumns = @JoinColumn(name = "box_id"),
-            inverseJoinColumns = @JoinColumn(name = "instrument_id")
-    )
+    @OneToMany(mappedBy = "box", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Instrument> instruments;
 
 

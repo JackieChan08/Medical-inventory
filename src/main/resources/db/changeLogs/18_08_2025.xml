@@ -29,8 +29,26 @@
         </createTable>
     </changeSet>
 
+    <!-- Таблица для коробок -->
+    <changeSet id="2-create-boxes" author="jeki">
+        <createTable tableName="boxes">
+            <column name="id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="barcode" type="VARCHAR(255)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="doctor_name" type="VARCHAR(255)"/>
+            <column name="status" type="VARCHAR(50)"/>
+            <column name="name" type="VARCHAR(255)"/>
+            <column name="return_by" type="DATE"/>
+            <column name="created_at" type="TIMESTAMP"/>
+            <column name="updated_at" type="TIMESTAMP"/>
+        </createTable>
+    </changeSet>
+
     <!-- Таблица для инструментов -->
-    <changeSet id="2-create-instruments" author="jeki">
+    <changeSet id="3-create-instruments" author="jeki">
         <createTable tableName="instruments">
             <column name="id" type="UUID">
                 <constraints primaryKey="true" nullable="false"/>
@@ -48,52 +66,16 @@
             <column name="reusable" type="BOOLEAN"/>
             <column name="usage_count" type="INT"/>
             <column name="status" type="VARCHAR(50)"/>
-        </createTable>
-    </changeSet>
-
-    <!-- Таблица для коробок -->
-    <changeSet id="3-create-boxes" author="jeki">
-        <createTable tableName="boxes">
-            <column name="id" type="UUID">
-                <constraints primaryKey="true" nullable="false"/>
-            </column>
-            <column name="barcode" type="VARCHAR(255)">
-                <constraints nullable="false" unique="true"/>
-            </column>
-            <column name="doctor_name" type="VARCHAR(255)"/>
-            <column name="status" type="VARCHAR(50)"/>
-            <column name="name" type="VARCHAR(255)"/>
-            <column name="return_by" type="DATE"/>
-            <column name="created_at" type="TIMESTAMP"/>
-            <column name="updated_at" type="TIMESTAMP"/>
-        </createTable>
-    </changeSet>
-
-    <!-- Промежуточная таблица для box-instruments -->
-    <changeSet id="4-create-box-instruments" author="jeki">
-        <createTable tableName="box_instruments">
-            <column name="box_id" type="UUID">
-                <constraints nullable="false"/>
-            </column>
-            <column name="instrument_id" type="UUID">
-                <constraints nullable="false"/>
-            </column>
+            <column name="box_id" type="UUID"/>
         </createTable>
 
-        <addPrimaryKey tableName="box_instruments" columnNames="box_id, instrument_id"
-                       constraintName="pk_box_instruments"/>
-
-        <addForeignKeyConstraint baseTableName="box_instruments" baseColumnNames="box_id"
-                                 constraintName="fk_box_instruments_box"
+        <addForeignKeyConstraint baseTableName="instruments" baseColumnNames="box_id"
+                                 constraintName="fk_instrument_box"
                                  referencedTableName="boxes" referencedColumnNames="id"/>
-
-        <addForeignKeyConstraint baseTableName="box_instruments" baseColumnNames="instrument_id"
-                                 constraintName="fk_box_instruments_instrument"
-                                 referencedTableName="instruments" referencedColumnNames="id"/>
     </changeSet>
 
     <!-- История действий -->
-    <changeSet id="5-create-instrument-box-history" author="jeki">
+    <changeSet id="4-create-instrument-box-history" author="jeki">
         <createTable tableName="instrument_box_history">
             <column name="id" type="UUID">
                 <constraints primaryKey="true" nullable="false"/>
@@ -115,7 +97,7 @@
     </changeSet>
 
     <!-- Таблица для картинок инструментов -->
-    <changeSet id="6-create-instrument-images" author="jeki">
+    <changeSet id="5-create-instrument-images" author="jeki">
         <createTable tableName="instrument_images">
             <column name="id" type="UUID">
                 <constraints primaryKey="true" nullable="false"/>

@@ -25,6 +25,9 @@ public interface InstrumentRepository extends JpaRepository<Instrument, UUID> {
 
     Page<Instrument> findAllByStatus(InstrumentStatus status, Pageable pageable);
 
+    @Query("SELECT i FROM Instrument i WHERE i.box.id = :boxId")
+    List<Instrument> findAllByBoxId(@Param("boxId") UUID boxId);
+
 
 
 }

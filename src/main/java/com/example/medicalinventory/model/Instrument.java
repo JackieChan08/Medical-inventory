@@ -1,5 +1,6 @@
 package com.example.medicalinventory.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -24,21 +25,21 @@ public class Instrument {
     private UUID id;
 
     @Column(unique = true, nullable = false)
-    private String barcode; // штрих-код Code39
+    private String barcode;
 
-    private String name; // имя инструмента
+    private String name;
 
-    private String serialNumber; // нужно самому создавать
+    private String serialNumber;
 
-    private LocalDate productionDate; // дата изготовления
+    private LocalDate productionDate;
     private LocalDate acceptanceDate;
 
     private String productionCompany;
     private String country;
     private String composition;
 
-    private Boolean reusable;   // одноразовый / многоразовый
-    private Integer usageCount; // сколько раз применялся
+    private Boolean reusable;
+    private Integer usageCount;
 
     @Enumerated(EnumType.STRING)
     private InstrumentStatus status;
@@ -46,5 +47,10 @@ public class Instrument {
     @OneToMany(mappedBy = "instrument", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference("instrument_images")
     private List<InstrumentImage> instrumentImages;
+    @JsonBackReference
+    @ManyToOne
+    @JoinColumn(name = "box_id")
+    private Box box;
+
 
 }
