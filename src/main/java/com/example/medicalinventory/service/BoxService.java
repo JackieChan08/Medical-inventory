@@ -168,7 +168,7 @@ public class BoxService {
                                 if (instrument.getUsageCount() <= 0){
                                     instrument.setStatus(InstrumentStatus.EXPLOITATION);
                                 }
-                                instrument.setUsageCount(instrument.getUsageCount() - 1);
+                                instrument.setUsageCount(Integer.valueOf(instrument.getUsageCount() - 1));
                                 instrumentBoxHistoryService.logOperation(
                                         box,
                                         instrument,
@@ -296,6 +296,10 @@ public class BoxService {
     public Page<Box> getBoxesByReturnDateRange(LocalDate startDate, LocalDate endDate, Pageable pageable){
         return boxRepository.findByReturnByBetween(startDate, endDate, pageable);
     };
+
+    public Optional<Box> findByBarcode(String barcode) {
+        return boxRepository.findByBarcode(barcode);
+    }
 
 
 }

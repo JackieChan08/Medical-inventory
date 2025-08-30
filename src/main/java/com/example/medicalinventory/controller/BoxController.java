@@ -9,9 +9,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -72,6 +74,12 @@ public class BoxController {
         Page<Box> boxes = boxService.getBoxesByReturnDateRange(startDate, endDate, pageable);
 
         return ResponseEntity.ok(boxes.map(boxConverterService::convertToBoxResponse));
+    }
+
+    @GetMapping("/{barcode}")
+    public ResponseEntity<BoxResponse> getBoxByBarcode(@PathVariable String barcode) {
+        Box box = boxService.findByBarcode(barcode).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        return ResponseEntity.ok(boxConverterService.convertToBoxResponse(box));
     }
 
 
