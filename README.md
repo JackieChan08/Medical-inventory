@@ -18,7 +18,7 @@ Java-приложение для управления медицинскими �
 ```bash
 git clone https://github.com/JackieChan08/Medical-inventory-jar.git
 cd Medical-inventory-jar
-
+bash```
 2. Запуск через Docker
 
 Находясь в корневой директории проекта:
