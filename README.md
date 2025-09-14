@@ -63,5 +63,6 @@ docker compose up --build
 * PostgreSQL
 * Liquibase
 * Docker / Docker Compose
-
+* Maven
+  
 ---
